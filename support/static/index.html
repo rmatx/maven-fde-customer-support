@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Support desk</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1c2230;--mute:#667085;--line:#e3e6ec;--ok:#1a7f4b;--bad:#b42318;--warn:#b54708;--acc:#2f5bea}
+@media (prefers-color-scheme:dark){:root{--bg:#12151c;--card:#1a1f2a;--ink:#e8ebf2;--mute:#9aa4b5;--line:#2a3140;--ok:#4cc38a;--bad:#ff8a80;--warn:#f5a65b;--acc:#7c9bff}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,sans-serif}
+header{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+main{max-width:1100px;margin:0 auto;padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:800px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--mute);margin:0 0 8px}
+#login{max-width:340px;margin:60px auto;padding:16px}input,button{font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+button{background:var(--acc);color:#fff;border:0;cursor:pointer}input{width:100%;margin:4px 0 10px}
+#log{height:420px;overflow:auto;display:flex;flex-direction:column;gap:8px}
+.msg{padding:8px 10px;border-radius:10px;max-width:90%;white-space:pre-wrap}.me{align-self:flex-end;background:var(--acc);color:#fff}.bot{background:var(--bg)}
+#send{display:flex;gap:8px;margin-top:8px}#send input{margin:0}
+.step{border-left:3px solid var(--line);padding:4px 8px;margin:6px 0;font-size:13px}
+.step.passed{border-color:var(--ok)}.step.blocked{border-color:var(--warn)}.step.error{border-color:var(--bad)}
+.step b{font-weight:600}.mute{color:var(--mute)}code,pre{font:12px ui-monospace,monospace}pre{margin:4px 0;white-space:pre-wrap;word-break:break-word}
+table{border-collapse:collapse;font-size:12px;margin:4px 0}td,th{border:1px solid var(--line);padding:2px 6px;text-align:left}
+a{color:var(--acc)}.hidden{display:none}
+</style></head><body>
+<header><strong>Support desk</strong><span id="who" class="mute"></span></header>
+<div id="login" class="card"><h2>Log in</h2>
+<label>Email<input id="email" value="alice.jones@example.com"></label>
+<label>Password<input id="pw" type="password"></label>
+<button id="go">Log in</button> <span id="lerr" style="color:var(--bad)"></span></div>
+<main id="app" class="hidden">
+<section class="card"><h2>Conversation</h2><div id="log"></div>
+<form id="send"><input id="msg" placeholder="Ask about your orders…" autocomplete="off"><button>Send</button></form></section>
+<section class="card"><h2>What the system did</h2><div id="steps" class="mute">Steps appear here as they happen.</div></section>
+</main>
+<script>
+let user=null;const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function bubble(t,c){const d=document.createElement('div');d.className='msg '+c;d.textContent=t;$('log').append(d);$('log').scrollTop=1e9;return d}
+function fill(sql,args){return esc(sql)} // statement text; values are shown beside it
+function table(rows){if(!Array.isArray(rows)||!rows.length||typeof rows[0]!=='object')return '<pre>'+esc(JSON.stringify(rows))+'</pre>';
+ const k=Object.keys(rows[0]);return '<table><tr>'+k.map(x=>'<th>'+esc(x)+'</th>').join('')+'</tr>'+rows.map(r=>'<tr>'+k.map(x=>'<td>'+esc(typeof r[x]==='object'?JSON.stringify(r[x]):r[x])+'</td>').join('')+'</tr>').join('')+'</table>'}
+function render(e){
+ const s=$('steps');let h='';
+ if(e.type==='trace')h=`<div class="step"><b>trace</b> <a href="${esc(e.url)}" target="_blank">${esc(e.turn_id)}</a></div>`;
+ else if(e.type==='step'){h=`<div class="step ${e.status}"><b>${esc(e.key)}</b> ${e.status} <span class="mute">· ${e.ms} ms · ${esc(e.span)} · ${esc(e.kind)}</span><div>${esc(e.detail)}</div>`;
+  (e.memories||[]).forEach(m=>h+=`<div class="mute">memory ${m.score} ${m.inserted?'inserted':'skipped ('+m.reason+')'}: ${esc(m.memory)}</div>`);h+='</div>'}
+ else if(e.type==='llm')h=`<div class="step"><b>llm</b> ${esc(e.decision)} <span class="mute">· ${e.tokens_in} in / ${e.tokens_out} out · ${e.ms} ms</span></div>`;
+ else if(e.type==='tool_call')h=`<div class="step"><b>tool</b> ${esc(e.name)}(${esc(JSON.stringify(e.args))}) <span class="mute">· ${e.info.kind} ${e.info.access}</span><pre>${esc(e.info.statement)}\nbound from session: ${esc(e.info.bound.join(', '))}</pre></div>`;
+ else if(e.type==='tool_result')h=`<div class="step ${e.ok?'passed':'error'}"><b>result</b> ${esc(e.name)} <span class="mute">· ${e.ms} ms</span>${table(e.result)}</div>`;
+ else if(e.type==='error')h=`<div class="step error"><b>${esc(e.step)}</b> error: ${esc(e.error)}</div>`;
+ if(h)s.insertAdjacentHTML('beforeend',h)}
+$('go').onclick=async()=>{const r=await fetch('/api/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email:$('email').value,password:$('pw').value})});
+ const j=await r.json();if(!r.ok){$('lerr').textContent=j.error;return}
+ user=j.user_id;$('who').textContent=j.full_name;$('login').classList.add('hidden');$('app').classList.remove('hidden')};
+$('send').onsubmit=async ev=>{ev.preventDefault();const m=$('msg').value.trim();if(!m)return;$('msg').value='';bubble(m,'me');$('steps').innerHTML='';
+ const r=await fetch('/api/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({user_id:user,message:m})});
+ if(!r.ok){bubble((await r.json()).error,'bot');return}
+ const rd=r.body.getReader(),dec=new TextDecoder();let buf='';
+ for(;;){const{done,value}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});let i;
+  while((i=buf.indexOf('\n'))>=0){const line=buf.slice(0,i);buf=buf.slice(i+1);if(!line)continue;const e=JSON.parse(line);render(e);
+   if(e.type==='final'||(e.type==='error'&&e.response))bubble(e.response||e.error,'bot')}}};
+</script></body></html>

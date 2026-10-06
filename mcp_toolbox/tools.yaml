@@ -1,0 +1,108 @@
+# Stage 2: the only way anything touches the shop's database (M-2).
+# Ownership is enforced in the SQL (M-4). The email parameter is bound from the session by the
+# client in stage 3, so the model never supplies it (M-5).
+kind: source
+name: shop
+type: postgres
+host: 127.0.0.1
+port: 5434
+database: shop
+user: toolbox
+password: ${TOOLBOX_DB_PASSWORD}
+---
+kind: tool
+name: get-order-status
+type: postgres-sql
+source: shop
+description: Look up one order by its order id. Returns nothing if the order does not belong to the customer.
+parameters:
+  - name: order_id
+    type: integer
+    description: The order id the customer asked about.
+  - name: customer_email
+    type: string
+    description: The logged-in customer's email. Supplied by the system, not by the customer.
+statement: |
+  SELECT order_id, status, items, order_date, total_amount, delivery_address
+  FROM customer_orders
+  WHERE order_id = $1 AND customer_email = $2;
+---
+kind: tool
+name: find-customer-orders
+type: postgres-sql
+source: shop
+description: List the customer's orders, newest first.
+parameters:
+  - name: customer_email
+    type: string
+    description: The logged-in customer's email. Supplied by the system, not by the customer.
+statement: |
+  SELECT order_id, status, items, order_date, total_amount
+  FROM customer_orders
+  WHERE customer_email = $1
+  ORDER BY order_date DESC;
+---
+kind: tool
+name: action-log
+type: postgres-sql
+source: shop
+description: >
+  Record a change the customer asked for. This only logs the request; a person carries it out.
+  Returns the new log row, or nothing if the order in parameters does not belong to the customer.
+parameters:
+  - name: user_email
+    type: string
+    description: The logged-in customer's email. Supplied by the system, not by the customer.
+  - name: action_type
+    type: string
+    description: One of CANCEL_ORDER, RETURN_ORDER, UPDATE_ADDRESS, UPDATE_PREFERENCE, UPDATE_PROFILE.
+  - name: parameters
+    type: string
+    description: A JSON object describing the request. Include order_id when an order is involved.
+statement: |
+  INSERT INTO actions_log (user_email, action_type, parameters)
+  SELECT $1::text, $2::text, $3::jsonb
+  WHERE ($3::jsonb->>'order_id') IS NULL
+     OR EXISTS (SELECT 1 FROM customer_orders
+                WHERE order_id = ($3::jsonb->>'order_id')::int AND customer_email = $1::text)
+  RETURNING id, action_type, parameters;
+---
+kind: tool
+name: verify-login
+type: postgres-sql
+source: shop
+description: Check an email and password. Used by the app at login only; the agent never gets this tool.
+parameters:
+  - name: email
+    type: string
+    description: The email the customer typed.
+  - name: password
+    type: string
+    description: The password the customer typed.
+statement: |
+  SELECT email, full_name, is_premium_customer FROM users WHERE email = $1 AND password = $2;
+---
+kind: tool
+name: get-user
+type: postgres-sql
+source: shop
+description: Look up a user by email without a password. Used only by the local scripted CLI (--user); the agent never gets this tool.
+parameters:
+  - name: email
+    type: string
+    description: The user's email.
+statement: |
+  SELECT email, full_name, is_premium_customer FROM users WHERE email = $1;
+---
+kind: toolset
+name: auth
+tools:
+  - verify-login
+  - get-user
+---
+kind: toolset
+name: support_agent
+tools:
+  - get-order-status
+  - find-customer-orders
+  - action-log

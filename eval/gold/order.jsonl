@@ -1,0 +1,12 @@
+{"id": "O01", "user": "alice.jones@example.com", "message": "What is the status of order 3?", "contains": "SHIPPED", "tool": "get-order-status"}
+{"id": "O02", "user": "alice.jones@example.com", "message": "Where is my USB-C hub?", "contains": "PROCESSING", "tool": "either"}
+{"id": "O03", "user": "alice.jones@example.com", "message": "Show me all my orders", "contains": "Ergonomic Office Chair", "tool": "find-customer-orders"}
+{"id": "O04", "user": "bob.smith@techmail.com", "message": "What's the status of order 7?", "contains": "PROCESSING", "tool": "get-order-status"}
+{"id": "O05", "user": "bob.smith@techmail.com", "message": "Was my VR headset order cancelled?", "contains": "CANCELLED", "tool": "either"}
+{"id": "O06", "user": "charlie.d@webmail.com", "message": "Has order 8 been delivered?", "contains": "DELIVERED", "tool": "get-order-status"}
+{"id": "O07", "user": "diana.prince@hero.net", "message": "What happened to my running shoes order?", "contains": "RETURNED", "tool": "either"}
+{"id": "O08", "user": "evan.g@bizcorp.com", "message": "What's the status of my office desk order?", "contains": "SHIPPED", "tool": "either"}
+{"id": "O09", "user": "fiona.shrek@swamp.com", "message": "What's the status of my skincare gift set?", "contains": "CANCELLED", "tool": "either"}
+{"id": "O10", "user": "george.j@jungle.com", "message": "Is my Bluetooth speaker order still processing?", "contains": "PROCESSING", "tool": "either"}
+{"id": "O11", "user": "ian.malcolm@chaos.com", "message": "How much did I pay for order 15?", "contains": "2200", "tool": "get-order-status"}
+{"id": "O12", "user": "julia.child@kitchen.com", "message": "List my orders", "contains": "Descaling Kit", "tool": "find-customer-orders"}

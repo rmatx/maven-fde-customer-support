@@ -1,0 +1,11 @@
+.env
+runs/*
+!runs/failing/
+reports/*
+!reports/eval.json
+__pycache__/
+.venv/
+logs/
+.run/
+.phoenix/
+.qdrant/
