@@ -1,5 +1,7 @@
 # DESIGN
 
+A one-page overview with the architecture diagram is in [docs/PROJECT-BRIEF.md](docs/PROJECT-BRIEF.md).
+
 > First version of the design, revised after the build so that it describes what actually runs. Numbers come from `reports/` (the final run is `reports/eval.json`; earlier runs are archived beside it).
 
 ## Components
