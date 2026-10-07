@@ -27,7 +27,7 @@ async def ask(agent, text: str, retries: int = 0) -> str:
             msg = types.Content(role="user", parts=[types.Part(text=text)])
             async for ev in runner.run_async(user_id=uid, session_id=sid, new_message=msg):
                 if ev.is_final_response() and ev.content and ev.content.parts:
-                    out = ev.content.parts[0].text or ""
+                    out = "".join(p.text or "" for p in ev.content.parts if not getattr(p, "thought", None))
             return out
         except Exception as e:
             transient = any(code in str(e) for code in ("503", "429", "UNAVAILABLE"))

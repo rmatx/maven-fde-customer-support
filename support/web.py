@@ -1,5 +1,5 @@
 """Stage 9: FastAPI front end. /api/chat streams the SAME generator the CLI uses, as NDJSON (W-1, W-2)."""
-import json
+import asyncio, json
 from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv()
@@ -14,6 +14,7 @@ from support.pipeline import run_turn
 telemetry.setup()   # global tracer provider before any agent is built
 app = FastAPI(title="Support desk")
 SESSIONS: dict = {}   # user_id -> (toolbox client, runner, session)
+LOCKS: dict = {}      # user_id -> asyncio.Lock: one turn at a time per chat session, or two turns interleave in one history
 
 
 class Login(BaseModel):
@@ -70,7 +71,10 @@ async def chat(body: Chat):
         return JSONResponse({"error": "message too long"}, status_code=413)
     _, runner, session = SESSIONS[body.user_id]
 
+    lock = LOCKS.setdefault(body.user_id, asyncio.Lock())
+
     async def stream():
-        async for e in run_turn(runner, session, body.user_id, body.message):
-            yield json.dumps(e, default=str) + "\n"
+        async with lock:
+            async for e in run_turn(runner, session, body.user_id, body.message):
+                yield json.dumps(e, default=str) + "\n"
     return StreamingResponse(stream(), media_type="application/x-ndjson")

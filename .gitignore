@@ -3,6 +3,7 @@ runs/*
 !runs/failing/
 reports/*
 !reports/eval.json
+!reports/eval-console.txt
 __pycache__/
 .venv/
 logs/

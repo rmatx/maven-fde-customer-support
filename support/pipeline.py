@@ -200,7 +200,7 @@ async def run_turn(runner, session, user_email: str, message: str):
                     st["tools"].append({"name": name, "ok": True, "ms": ms(started)})
                     yield {"type": "tool_result", "id": i, "name": name, "ok": True, "ms": ms(started), "result": _unwrap(r.response)}
                 if ev.is_final_response() and ev.content and ev.content.parts:
-                    response = ev.content.parts[0].text or ""
+                    response = "".join(p.text or "" for p in ev.content.parts if not getattr(p, "thought", None))   # skip the model's reasoning summary
                 last = time.monotonic()
                 if len(st["tools"]) > MAX_TOOLS or st["tin"] + st["tout"] > MAX_TOKENS or time.monotonic() - t0 > MAX_WALL_S:
                     terminated, response = "cap", response or "Sorry, I couldn't finish that request."

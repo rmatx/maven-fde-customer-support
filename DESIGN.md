@@ -104,6 +104,7 @@ A JSON-RPC error, a timeout or an unparseable text part makes the pipeline emit 
 - `T-MEM-MINSCORE` is 0.50, changed from 0.25 (THRESHOLDS allows this with evidence). I first ran against Mem0's cloud, where plain search scored the right memories 0.17–0.23 and I turned on its reranker instead. Then the cloud returned 429 on every call, so I self-hosted Mem0 (Qdrant plus Ollama `nomic-embed-text`). That has no reranker. On the 10 gold pairs the right memory scored 0.53–0.81 and unrelated ones up to 0.55, so 0.50 keeps all 10 and still lets a few unrelated memories through. Cost: some noise in the prompt.
 
 **Other trade-offs.**
+- Turns in one chat session run one at a time (a lock per user in `support/web.py`). Without it, two parallel requests from the same user interleave in one history and the agent can act on the other turn's request, which the eval exposed. Cost: a user's second request waits for the first.
 - Sessions rotate every 6 turns because the history is re-sent on every model call and reached the token cap. The cost: running chat context is lost, and only Mem0 carries standing facts forward.
 - Saving memories verbatim (`infer=False`) made recall deterministic after Mem0's own extraction dropped 4 of 10 planted facts in one run. The cost: noisier memory.
 - A one-time model change: `gemini-2.5-flash` returned a 404 for new keys, so the spec's model is not the one used. The final run used Gemini through OpenRouter.
