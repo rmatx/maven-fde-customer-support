@@ -6,7 +6,14 @@ reports/*
 !reports/eval-console.txt
 __pycache__/
 .venv/
-logs/
+logs/*
+!logs/demo/
+!logs/video-script.md
+logs/demo/*
+!logs/demo/demo.mp4
+!logs/demo/demo.py
+!logs/demo/demo2.py
+!logs/demo/prep.sh
 .run/
 .phoenix/
 .qdrant/
